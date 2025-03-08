@@ -1,4 +1,4 @@
-module github.com/bhays/jokecli
+module github.com/brianhays/jokecli
 
 go 1.21
 

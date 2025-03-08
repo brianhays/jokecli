@@ -18,7 +18,7 @@ Currently supported joke sources:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/bhays/jokecli.git
+git clone https://github.com/brianhays/jokecli.git
 cd jokecli
 ```
 

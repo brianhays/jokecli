@@ -1,7 +1,7 @@
 package main
 
-import "github.com/bhays/jokecli/cmd"
+import "github.com/brianhays/jokecli/cmd"
 
 func main() {
 	cmd.Execute()
-} 
+}

@@ -51,7 +51,7 @@ func getDadJoke(client httpClient) (*DadJoke, error) {
 
 	// Required headers for icanhazdadjoke API
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "jokecli (https://github.com/bhays/jokecli)")
+	req.Header.Set("User-Agent", "jokecli (https://github.com/brianhays/jokecli)")
 
 	resp, err := client.Do(req)
 	if err != nil {

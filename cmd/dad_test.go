@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/bhays/jokecli/internal/testutils"
+	"github.com/brianhays/jokecli/internal/testutils"
 )
 
 func TestGetDadJoke(t *testing.T) {
