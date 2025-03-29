@@ -124,22 +124,34 @@ go test -v ./cmd -run TestGetDadJoke
 
 ```
 jokecli/
-├── cmd/
-│   ├── root.go       # Root command configuration
-│   ├── chuck.go      # Chuck Norris jokes command
-│   ├── dad.go        # Dad jokes command
-│   ├── root_test.go  # Root command tests
-│   ├── chuck_test.go # Chuck Norris command tests
-│   └── dad_test.go   # Dad jokes command tests
-├── internal/
-│   └── testutils/    # Testing utilities and HTTP mocks
+├── cmd/                    # Command-line interface definitions
+│   ├── root.go            # Root command and interactive mode
+│   ├── chuck.go           # Chuck Norris jokes command
+│   ├── dad.go             # Dad jokes command
+│   ├── root_test.go       # Root command tests
+│   ├── chuck_test.go      # Chuck Norris command tests
+│   └── dad_test.go        # Dad jokes command tests
+├── internal/              # Internal packages
+│   ├── jokesapi/         # Core joke fetching logic
+│   │   ├── client.go     # Shared HTTP client interface
+│   │   ├── chuck.go      # Chuck Norris API interaction
+│   │   └── dad.go        # Dad jokes API interaction
+│   └── testutils/        # Testing utilities and HTTP mocks
 ├── tests/
-│   └── integration/  # Integration tests
-├── main.go           # Application entry point
-├── Makefile         # Build and test automation
-├── go.mod           # Go module file
-└── README.md        # This file
+│   └── integration/      # Integration tests
+├── main.go               # Application entry point
+├── Makefile             # Build and test automation
+├── go.mod               # Go module file
+└── README.md            # Project documentation
 ```
+
+The project follows standard Go project layout:
+- `cmd/`: Contains the CLI commands and their tests. Each command file focuses on command definition and user interaction.
+- `internal/`: Houses packages that are internal to the project:
+  - `jokesapi/`: Core logic for fetching jokes from various APIs, separated by source
+  - `testutils/`: Shared testing utilities used across the project
+- `tests/`: Contains integration tests that verify end-to-end functionality
+- Root level files handle project configuration and documentation
 
 ## Contributing
 
