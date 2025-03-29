@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/brianhays/jokecli/internal/jokesapi"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
@@ -53,13 +54,13 @@ func runInteractiveMode() error {
 
 	switch selected {
 	case "chuck":
-		joke, err := getChuckNorrisJoke(defaultClient)
+		joke, err := jokesapi.GetChuckNorrisJoke(jokesapi.DefaultClient)
 		if err != nil {
 			return err
 		}
 		fmt.Println(joke.Value)
 	case "dad":
-		joke, err := getDadJoke(defaultClient)
+		joke, err := jokesapi.GetDadJoke(jokesapi.DefaultClient)
 		if err != nil {
 			return err
 		}

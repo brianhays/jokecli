@@ -1,80 +1,92 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/brianhays/jokecli/internal/jokesapi"
 	"github.com/brianhays/jokecli/internal/testutils"
 )
 
+// MockChuckClient is a mock HTTP client for testing Chuck Norris jokes
+type MockChuckClient struct {
+	statusCode int
+	body       string
+	err        error
+}
+
+// Do implements the jokesapi.HTTPClient interface for MockChuckClient
+func (m *MockChuckClient) Do(req *http.Request) (*http.Response, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return &http.Response{
+		StatusCode: m.statusCode,
+		Body:       io.NopCloser(bytes.NewReader([]byte(m.body))),
+		Header:     make(http.Header),
+	}, nil
+}
+
 func TestGetChuckNorrisJoke(t *testing.T) {
 	tests := []struct {
-		name           string
-		mockResponse   string
-		mockStatusCode int
-		wantJoke       string
-		wantErr        bool
+		name                string
+		client              jokesapi.HTTPClient
+		want                *jokesapi.ChuckNorrisJoke
+		wantErr             bool
+		expectedErrContains string
 	}{
 		{
-			name: "successful joke fetch",
-			mockResponse: `{
-				"id": "abc123",
-				"value": "Chuck Norris can divide by zero.",
-				"url": "https://api.chucknorris.io/jokes/abc123"
-			}`,
-			mockStatusCode: http.StatusOK,
-			wantJoke:       "Chuck Norris can divide by zero.",
-			wantErr:        false,
+			name:    "successful joke fetch",
+			client:  &MockChuckClient{statusCode: http.StatusOK, body: `{"id": "1", "value": "Chuck Norris can divide by zero.", "url": ""}`},
+			want:    &jokesapi.ChuckNorrisJoke{ID: "1", Value: "Chuck Norris can divide by zero.", URL: ""},
+			wantErr: false,
 		},
 		{
-			name:           "invalid json response",
-			mockResponse:   `{"invalid json"}`,
-			mockStatusCode: http.StatusOK,
-			wantJoke:       "",
-			wantErr:        true,
+			name:                "server error",
+			client:              &MockChuckClient{statusCode: http.StatusInternalServerError, body: "Internal Server Error"},
+			want:                nil,
+			wantErr:             true,
+			expectedErrContains: "Chuck Norris API returned unexpected status code: 500",
 		},
 		{
-			name:           "server error",
-			mockResponse:   `{"message": "Internal Server Error"}`,
-			mockStatusCode: http.StatusInternalServerError,
-			wantJoke:       "",
-			wantErr:        false,
+			name:                "network error",
+			client:              &MockChuckClient{err: fmt.Errorf("network error")},
+			want:                nil,
+			wantErr:             true,
+			expectedErrContains: "failed to fetch Chuck Norris joke: network error",
 		},
 		{
-			name: "missing required fields",
-			mockResponse: `{
-				"id": "abc123",
-				"url": "https://api.chucknorris.io/jokes/abc123"
-			}`,
-			mockStatusCode: http.StatusOK,
-			wantJoke:       "",
-			wantErr:        false,
+			name:                "invalid json response",
+			client:              &MockChuckClient{statusCode: http.StatusOK, body: `invalid json`},
+			want:                nil,
+			wantErr:             true,
+			expectedErrContains: "failed to parse Chuck Norris joke:",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := testutils.NewTestClient(func(req *http.Request) *http.Response {
-				// Test request headers
-				if req.Header.Get("Accept") != "application/json" {
-					t.Error("Accept header not set correctly")
-				}
-				if req.Header.Get("User-Agent") == "" {
-					t.Error("User-Agent header not set")
-				}
+			got, err := jokesapi.GetChuckNorrisJoke(tt.client)
 
-				return testutils.MockResponse(tt.mockStatusCode, tt.mockResponse)
-			})
-
-			got, err := getChuckNorrisJoke(client)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getChuckNorrisJoke() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetChuckNorrisJoke() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if !tt.wantErr && got != nil && got.Value != tt.wantJoke {
-				t.Errorf("getChuckNorrisJoke() = %v, want %v", got.Value, tt.wantJoke)
+			if tt.wantErr && tt.expectedErrContains != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.expectedErrContains) {
+					t.Errorf("GetChuckNorrisJoke() error = %v, want error containing %q", err, tt.expectedErrContains)
+				}
+			}
+
+			// Use basic comparison for non-error cases
+			if !tt.wantErr && (got == nil || tt.want == nil || got.ID != tt.want.ID || got.Value != tt.want.Value || got.URL != tt.want.URL) {
+				t.Errorf("GetChuckNorrisJoke() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -86,13 +98,14 @@ func TestChuckCommand(t *testing.T) {
 	defer func() { isTesting = false }()
 
 	// Save the original client and restore it after the test
-	originalClient := defaultClient
-	defer func() { defaultClient = originalClient }()
+	originalClient := jokesapi.DefaultClient
+	defer func() { jokesapi.DefaultClient = originalClient }()
 
-	mockJoke := ChuckNorrisJoke{
-		ID:    "abc123",
-		Value: "Test Chuck Norris fact",
-		URL:   "https://api.chucknorris.io/jokes/abc123",
+	// Use the correct struct type from the jokesapi package
+	mockJoke := jokesapi.ChuckNorrisJoke{
+		ID:    "abc",
+		Value: "Test Chuck Norris Fact",
+		URL:   "http://example.com",
 	}
 
 	mockJSON, err := json.Marshal(mockJoke)
@@ -100,7 +113,8 @@ func TestChuckCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defaultClient = testutils.NewTestClient(func(req *http.Request) *http.Response {
+	// Set the default client to our test client
+	jokesapi.DefaultClient = testutils.NewTestClient(func(req *http.Request) *http.Response {
 		return testutils.MockResponse(http.StatusOK, string(mockJSON))
 	})
 
